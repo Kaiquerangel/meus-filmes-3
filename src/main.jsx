@@ -1,0 +1,16 @@
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import './index.css'
+import App from './App.jsx'
+import '@tabler/icons-webfont/dist/tabler-icons.min.css'
+
+try {
+  const tema = localStorage.getItem('kra-tema') || 'gold'
+  document.documentElement.setAttribute('data-tema', tema)
+} catch {}
+
+createRoot(document.getElementById('root')).render(
+  <StrictMode>
+    <App />
+  </StrictMode>
+)

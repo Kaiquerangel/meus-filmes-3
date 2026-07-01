@@ -1,0 +1,90 @@
+// firestore.rules
+// Coloque este arquivo na raiz do projeto e faça deploy com:
+// firebase deploy --only firestore:rules
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Funções auxiliares ──────────────────────────────────────
+
+    // Usuário autenticado
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    // Usuário é o dono do recurso
+    function isOwner(uid) {
+      return isAuth() && request.auth.uid == uid;
+    }
+
+    // Valida campos obrigatórios e tipos no filme
+    function validFilme(data) {
+      return data.keys().hasAll(['cadastradoEm'])
+        && (data.titulo is string && data.titulo.size() <= 300)
+        && (!('nota' in data) || (data.nota is number && data.nota >= 0 && data.nota <= 10))
+        && (!('ano' in data) || (data.ano is number && data.ano >= 1888 && data.ano <= 2100))
+        && (!('duracao' in data) || (data.duracao is number && data.duracao >= 0 && data.duracao <= 9999))
+        && (!('genero' in data) || (data.genero is list && data.genero.size() <= 20))
+        && (!('atores' in data) || (data.atores is list && data.atores.size() <= 50))
+        && (!('direcao' in data) || (data.direcao is list && data.direcao.size() <= 20))
+        && (!('tags' in data) || (data.tags is list && data.tags.size() <= 20))
+        && (!('historicoNotas' in data) || (data.historicoNotas is list && data.historicoNotas.size() <= 25))
+    }
+
+    // Valida coleção
+    function validColecao(data) {
+      return (data.nome is string && data.nome.size() > 0 && data.nome.size() <= 100)
+        && (!('descricao' in data) || (data.descricao is string && data.descricao.size() <= 500))
+        && (!('filmes' in data) || (data.filmes is list && data.filmes.size() <= 500))
+    }
+
+    // Valida perfil público
+    function validPerfil(data) {
+      return (!('nome' in data) || (data.nome is string && data.nome.size() <= 100))
+        && (!('nickname' in data) || (data.nickname is string && data.nickname.size() <= 30))
+        && (!('nickname_lower' in data) || (data.nickname_lower is string && data.nickname_lower.size() <= 30))
+    }
+
+    // ── Coleção users ───────────────────────────────────────────
+    match /users/{uid} {
+
+      // Perfil público: qualquer autenticado pode LER (para busca de nickname)
+      allow read: if isAuth();
+
+      // Criação: só o próprio usuário cria seu perfil
+      allow create: if isOwner(uid) && validPerfil(request.resource.data);
+
+      // Atualização: só o dono, sem poder alterar uid ou email
+      allow update: if isOwner(uid)
+        && validPerfil(request.resource.data)
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.email == resource.data.email;
+
+      // Deleção: só o dono
+      allow delete: if isOwner(uid);
+
+      // ── Subcoleção: filmes ──────────────────────────────────
+      match /filmes/{filmeId} {
+        // Só o dono acessa seus filmes
+        allow read:   if isOwner(uid);
+        allow create: if isOwner(uid) && validFilme(request.resource.data);
+        allow update: if isOwner(uid);
+        allow delete: if isOwner(uid);
+      }
+
+      // ── Subcoleção: colecoes ────────────────────────────────
+      match /colecoes/{colecaoId} {
+        allow read:   if isOwner(uid);
+        allow create: if isOwner(uid) && validColecao(request.resource.data);
+        allow update: if isOwner(uid) && validColecao(request.resource.data);
+        allow delete: if isOwner(uid);
+      }
+    }
+
+    // ── Bloquear tudo mais ──────────────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
