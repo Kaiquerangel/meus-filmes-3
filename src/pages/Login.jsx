@@ -99,6 +99,42 @@ function MensagemSucesso({ texto }) {
   )
 }
 
+function CheckboxLembrar({ checked, onChange }) {
+  return (
+    <label style={{
+      display: 'flex',
+      alignItems: 'center',
+      gap: 7,
+      fontSize: 12,
+      color: 'var(--text-3)',
+      cursor: 'pointer',
+      userSelect: 'none',
+    }}>
+      <span style={{
+        width: 16,
+        height: 16,
+        borderRadius: 4,
+        border: `1.5px solid ${checked ? 'var(--accent)' : 'var(--border2)'}`,
+        background: checked ? 'var(--accent)' : 'transparent',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+        transition: 'background 0.14s, border-color 0.14s',
+      }}>
+        {checked && <i className="ti ti-check" style={{ fontSize: 11, color: '#fff' }} />}
+      </span>
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={e => onChange(e.target.checked)}
+        style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }}
+      />
+      Lembrar de mim
+    </label>
+  )
+}
+
 function DivisorOu() {
   return (
     <div style={{
@@ -171,8 +207,10 @@ export default function Login() {
 
   const [modo, setModo]       = useState('login')
   const [form, setForm]       = useState({
-    identifier: '', nome: '', nickname: '', email: '', password: '',
+    identifier: localStorage.getItem('meusfilmes-identifier') || '',
+    nome: '', nickname: '', email: '', password: '',
   })
+  const [lembrar, setLembrar] = useState(true)
   const [erro, setErro]       = useState('')
   const [sucesso, setSucesso] = useState('')
   const [loading, setLoading] = useState(false)
@@ -196,7 +234,13 @@ export default function Login() {
     if (!form.password)          return setErro('Informe a senha.')
     setErro(''); setLoading(true)
     try {
-      await login(form.identifier, form.password)
+      await login(form.identifier, form.password, lembrar)
+      // Salva ou limpa o identificador conforme a escolha do usuário
+      if (lembrar) {
+        localStorage.setItem('meusfilmes-identifier', form.identifier.trim())
+      } else {
+        localStorage.removeItem('meusfilmes-identifier')
+      }
     } catch (err) {
       const code = err?.code || ''
       if (code.includes('user-not-found') || code.includes('wrong-password') || code.includes('invalid-credential')) {
@@ -379,10 +423,6 @@ export default function Login() {
               {modo === 'login' && (
                 <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
 
-                  {/* Google */}
-                  <BotaoGoogle onClick={handleGoogle} loading={loadingGoogle} />
-                  <DivisorOu />
-
                   {/* E-mail ou nickname */}
                   <input
                     style={inputBase}
@@ -404,8 +444,9 @@ export default function Login() {
                     inputStyle={inputBase}
                   />
 
-                  {/* Link esqueci */}
-                  <div style={{ textAlign: 'right', marginTop: -4 }}>
+                  {/* Lembrar de mim + Esqueci minha senha */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: -4 }}>
+                    <CheckboxLembrar checked={lembrar} onChange={setLembrar} />
                     <button
                       type="button"
                       onClick={() => reset('recuperar')}
@@ -434,6 +475,10 @@ export default function Login() {
                       : 'Entrar'
                     }
                   </button>
+
+                  {/* Google — embaixo, como pedido */}
+                  <DivisorOu />
+                  <BotaoGoogle onClick={handleGoogle} loading={loadingGoogle} />
                 </form>
               )}
 
@@ -442,10 +487,6 @@ export default function Login() {
               ═══════════════════════════════ */}
               {modo === 'registro' && (
                 <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-
-                  {/* Google */}
-                  <BotaoGoogle onClick={handleGoogle} loading={loadingGoogle} />
-                  <DivisorOu />
 
                   {/* Nome */}
                   <input
@@ -548,6 +589,10 @@ export default function Login() {
                   <p style={{ fontSize: 11, color: 'var(--text-4)', textAlign: 'center', lineHeight: 1.5 }}>
                     Ao criar uma conta você concorda com os termos de uso do serviço.
                   </p>
+
+                  {/* Google — embaixo, como pedido */}
+                  <DivisorOu />
+                  <BotaoGoogle onClick={handleGoogle} loading={loadingGoogle} />
                 </form>
               )}
 

@@ -7,6 +7,9 @@ import {
   sendPasswordResetEmail,
   signInWithPopup,
   GoogleAuthProvider,
+  setPersistence,
+  browserLocalPersistence,
+  browserSessionPersistence,
 } from 'firebase/auth'
 import {
   doc, getDoc, setDoc,
@@ -43,7 +46,7 @@ export function useAuth() {
     return () => unsub()
   }, [])
 
-  const login = async (identifier, password) => {
+  const login = async (identifier, password, lembrar = true) => {
     let email = identifier.trim()
 
     // Login por nickname — resolve para email antes de autenticar
@@ -55,10 +58,16 @@ export function useAuth() {
       email = snap.docs[0].data().email
     }
 
+    // "Lembrar de mim" marcado → sessão persiste após fechar o navegador.
+    // Desmarcado → sessão é limpa ao fechar a aba/navegador.
+    await setPersistence(auth, lembrar ? browserLocalPersistence : browserSessionPersistence)
+
     return signInWithEmailAndPassword(auth, email, password)
   }
 
   const loginComGoogle = async () => {
+    // Login social sempre persiste — é o padrão esperado desse fluxo
+    await setPersistence(auth, browserLocalPersistence)
     const cred = await signInWithPopup(auth, googleProvider)
     const user = cred.user
 
